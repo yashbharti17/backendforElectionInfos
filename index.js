@@ -76,7 +76,7 @@ const AIScore = mongoose.model('AIScore', aiScoreSchema);
 
 // Function to generate content using Google Generative AI
 async function generateContent(candidateName, partyAffiliation) {
-  const genAI = new GoogleGenerativeAI("AIzaSyD5ejUrG1wngCsgrwPR63ZNNnccPibw3p8");
+  const genAI = new GoogleGenerativeAI(`${GEMINI_API_KEY}`);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `
