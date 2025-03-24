@@ -6,6 +6,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -334,6 +335,74 @@ app.get("/api/votes/:state", async (req, res) => {
 app.get("/api/user-profile", verifyToken, (req, res) => {
   res.json({ message: "User Profile Data", user: req.user });
 });
+
+
+// Schema and Model for News
+const articleSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  title: String,
+  description: String,
+  url: String,
+  author: String,
+  image: String,
+  language: String,
+  category: [String],
+  published: Date
+}, { timestamps: true });
+
+const Article = mongoose.model('Article', articleSchema);
+
+const Current_API = process.env.CURRENTS_API_KEY;
+// Fetch and store articles (runs every 2 hours)
+const fetchNews = async () => {
+  try {
+    const res = await axios.get('https://api.currentsapi.services/v1/latest-news', {
+      headers: { Authorization: Current_API },
+      params: { category: 'politics', country: 'US' }
+    });
+
+    const articles = res.data.news;
+
+    for (const article of articles) {
+      await Article.updateOne(
+        { id: article.id },
+        {
+          $setOnInsert: {
+            title: article.title,
+            description: article.description,
+            url: article.url,
+            author: article.author,
+            image: article.image !== "None" ? article.image : null,
+            language: article.language,
+            category: article.category,
+            published: new Date(article.published)
+          }
+        },
+        { upsert: true }
+      );
+    }
+
+    console.log(`[✔] Fetched and saved new articles at ${new Date().toLocaleString()}`);
+  } catch (err) {
+    console.error('[✖] Failed to fetch news:', err.message);
+  }
+};
+
+// Run job every 2 hours
+cron.schedule('0 */2 * * *', fetchNews);
+fetchNews(); // run once at startup
+
+// API to serve articles (sorted by date)
+app.get('/news', async (req, res) => {
+  try {
+    const articles = await Article.find().sort({ published: -1 });
+    res.json(articles);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch news' });
+  }
+});
+
+
 
 // ✅ Start Backend Server
 app.listen(PORT, () => {

@@ -13,11 +13,14 @@
     "@google/generative-ai": "^0.22.0",
     "axios": "^1.7.9",
     "bcryptjs": "^3.0.0",
+    "corn": "^0.0.1",
     "cors": "^2.8.5",
+    "cron": "^4.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.10.1",
+    "node-cron": "^3.0.3",
     "openai": "^4.85.1"
   }
 }
