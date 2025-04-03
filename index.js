@@ -403,6 +403,84 @@ app.get('/news', async (req, res) => {
 });
 
 
+const selectionSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  side: { type: String, enum: ["democrat", "republican", "final"], required: true },
+  index: { type: Number }, // Can be null for 'final'
+  name: { type: String, required: true },
+  seed: { type: Number, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+const Selection = mongoose.model("Selection", selectionSchema);
+
+
+app.post("/api/selections", async (req, res) => {
+  try {
+    const { userId, side, index, name, seed } = req.body;
+
+    if (!userId || !side || !name || seed === undefined) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const selection = new Selection({
+      userId,
+      side,
+      index,
+      name,
+      seed
+    });
+
+    await selection.save();
+    res.status(201).json({ message: "Selection saved", selection });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save selection" });
+  }
+});
+// GET /api/selections/stats
+app.get("/api/selections/stats", async (req, res) => {
+  try {
+    const stats = await Selection.aggregate([
+      {
+        $group: {
+          _id: "$name",
+          count: { $sum: 1 },
+          side: { $first: "$side" }
+        }
+      },
+      {
+        $project: {
+          name: "$_id",
+          side: 1,
+          count: 1,
+          _id: 0
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json(stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
+
+// API Routes
+app.delete('/api/selections/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // Delete all selections for the given userId
+    await Selection.deleteMany({ userId });
+    res.status(200).json({ message: 'Selections deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting selections:', error);
+    res.status(500).json({ error: 'Failed to delete selections' });
+  }
+});
+
 
 // ✅ Start Backend Server
 app.listen(PORT, () => {
